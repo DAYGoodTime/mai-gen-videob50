@@ -50,7 +50,8 @@ with st.expander("更换B50存档"):
             selected_save_id = st.selectbox(
                 "选择存档",
                 versions,
-                format_func=lambda x: f"{username} - {x} ({datetime.strptime(x.split('_')[0], '%Y%m%d').strftime('%Y-%m-%d')})"
+                format_func=lambda
+                    x: f"{username} - {x} ({datetime.strptime(x.split('_')[0], '%Y%m%d').strftime('%Y-%m-%d')})"
             )
             if st.button("使用此存档（只需要点击一次！）"):
                 if selected_save_id:
@@ -68,6 +69,7 @@ if not save_id:
 image_output_path = current_paths['image_dir']
 video_config_output_file = current_paths['video_config']
 video_download_path = f"./videos/downloads"
+
 
 # 通过向empty容器添加新的container，更新预览
 def update_preview(preview_placeholder, config, current_index):
@@ -94,7 +96,7 @@ def update_preview(preview_placeholder, config, current_index):
         with main_col1:
             st.image(item['main_image'], caption="成绩图片")
         with main_col2:
-            
+
             @st.dialog("删除视频确认")
             def delete_video_dialog():
                 st.warning("确定要删除这个视频吗？此操作不可撤销！")
@@ -107,8 +109,9 @@ def update_preview(preview_placeholder, config, current_index):
                         st.error(f"删除视频失败: 详细错误信息: {traceback.format_exc()}")
 
             if os.path.exists(item['video']):
-                st.video(item['video'])         
-                st.info(f"谱面确认视频不是想要的那个？可能刚才在检查下载链接的时候弄错了什么…… \n 点击下面按钮可以删除此视频，然后请回到上一步重新下载。")
+                st.video(item['video'])
+                st.info(
+                    f"谱面确认视频不是想要的那个？可能刚才在检查下载链接的时候弄错了什么…… \n 点击下面按钮可以删除此视频，然后请回到上一步重新下载。")
                 if st.button("删除该视频", key=f"delete_btn_{item['id']}"):
                     delete_video_dialog()
             else:
@@ -126,7 +129,7 @@ def update_preview(preview_placeholder, config, current_index):
 
         def get_valid_time_range(config_item):
             start = config_item.get('start', 0)
-            end = config_item.get('end', 0) 
+            end = config_item.get('end', 0)
             # 如果起始时间大于等于结束时间，调整起始时间
             if start >= end:
                 start = end - 1
@@ -140,7 +143,7 @@ def update_preview(preview_placeholder, config, current_index):
             options=range(0, video_duration),
             value=(start_time, end_time)
         )
-        
+
         # 计算总秒数并更新config
         item['start'] = start_time
         item['end'] = end_time
@@ -157,6 +160,7 @@ def update_preview(preview_placeholder, config, current_index):
         with time_col2:
             st.write(f"结束时间: {new_end_minutes:02d}:{new_end_seconds:02d}")
         st.write(f"持续时间: {item['duration']}")
+
 
 # 读取下载器配置
 if 'downloader_type' in st.session_state:
@@ -180,9 +184,10 @@ if not video_config or 'main' not in video_config:
     if st.button("生成视频内容配置"):
         st.toast("正在生成……")
         try:
-            video_config = st_gene_resource_config(b50_config, 
-                                            image_output_path, video_download_path, video_config_output_file,
-                                            G_config['CLIP_START_INTERVAL'], G_config['CLIP_PLAY_TIME'], G_config['DEFAULT_COMMENT_PLACEHOLDERS'])
+            video_config = st_gene_resource_config(b50_config,
+                                                   image_output_path, video_download_path, video_config_output_file,
+                                                   G_config['CLIP_START_INTERVAL'], G_config['CLIP_PLAY_TIME'],
+                                                   G_config['DEFAULT_COMMENT_PLACEHOLDERS'])
             st.success("视频配置生成完成！")
             st.rerun()
         except Exception as e:
@@ -205,6 +210,7 @@ if video_config:
     preview_placeholder = st.empty()
     update_preview(preview_placeholder, video_config, st.session_state.current_index)
 
+
     # 快速跳转组件的实现
     def on_jump_to_clip():
         target_index = video_ids.index(clip_selector)
@@ -218,19 +224,21 @@ if video_config:
             update_preview(preview_placeholder, video_config, st.session_state.current_index)
         else:
             st.toast("已经是当前视频片段！")
-    
-    with selector_container: 
+
+
+    with selector_container:
         # 显示当前视频片段的选择框
         clip_selector = st.selectbox(
-            label="快速跳转到视频片段", 
-            options=video_ids, 
+            label="快速跳转到视频片段",
+            options=video_ids,
             key="video_selector"  # 添加唯一的key
         )
         if st.button("确定"):
             on_jump_to_clip()
 
+    should_skip = video_config['main'][st.session_state.current_index].get("skip",False)
     # 上一个和下一个按钮
-    col1, col2, _ = st.columns([1, 1, 2])
+    col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
         if st.button("上一个"):
             if st.session_state.current_index > 0:
@@ -253,7 +261,27 @@ if video_config:
                 update_preview(preview_placeholder, video_config, st.session_state.current_index)
             else:
                 st.toast("已经是最后一个视频片段！")
-    
+    with col3:
+        if should_skip:
+            if st.button("取消跳过该片段"):
+                video_config['main'][st.session_state.current_index]['skip'] = False
+                # 保存当前配置
+                save_config(video_config_output_file, video_config)
+                st.toast("配置已保存！")
+        else:
+            if st.button("跳过该片段"):
+                if st.session_state.current_index < len(video_ids) - 1:
+                    video_config['main'][st.session_state.current_index]['skip'] = True
+                    # 保存当前配置
+                    save_config(video_config_output_file, video_config)
+                    st.toast("配置已保存！")
+                    # 切换到下一个视频片段
+                    st.session_state.current_index += 1
+                    update_preview(preview_placeholder, video_config, st.session_state.current_index)
+                else:
+                    st.toast("已经是最后一个视频片段！")
+    #更新状态
+    should_skip = video_config['main'][st.session_state.current_index].get("skip", False)
     # 保存配置按钮
     if st.button("保存配置"):
         save_config(video_config_output_file, video_config)
@@ -273,6 +301,8 @@ with st.container(border=True):
         st.error("危险区域 Danger Zone")
         st.write("如果本页面无法正常读取图片、视频或评论，请尝试使用下方按钮强制刷新配置。")
         st.warning("警告：此操作将清空所有已填写的评论或时间配置，如有需要请自行备份video_config文件！")
+
+
         @st.dialog("删除配置确认")
         def delete_video_config_dialog(file):
             st.warning("确定要执行强制配置刷新操作吗？此操作不可撤销！")
@@ -283,11 +313,13 @@ with st.container(border=True):
                 except Exception as e:
                     st.error(f"删除当前配置文件失败: 详细错误信息: {traceback.format_exc()}")
 
+
         if os.path.exists(video_config_file):
             if st.button("强制刷新视频配置文件", key=f"delete_btn_video_config"):
                 delete_video_config_dialog(video_config_file)
         else:
             st.info("当前还没有创建视频生成配置文件")
+
 
         @st.dialog("删除视频确认")
         def delete_videoes_dialog(file_path):
@@ -300,6 +332,7 @@ with st.container(border=True):
                     st.rerun()
                 except Exception as e:
                     st.error(f"删除视频失败: 详细错误信息: {traceback.format_exc()}")
+
 
         if os.path.exists(video_download_path):
             if st.button("删除所有已下载视频", key=f"delete_btn_videoes"):

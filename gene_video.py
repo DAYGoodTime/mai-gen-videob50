@@ -142,7 +142,7 @@ def create_info_segment(clip_config, resolution, font_path, text_size=44, inline
                         color="white",
                         duration=clip_config['duration'])
     
-    addtional_text = "【本视频由mai-genVb50视频生成器生成】"
+    addtional_text = "【本视频由mai-genVb50(分支)视频生成器生成】"
     addtional_txt_clip = TextClip(font=font_path, text=addtional_text,
                         method = "label",
                         font_size=18,
@@ -325,6 +325,9 @@ def create_full_video(resources, resolution, font_path, auto_add_transition=True
     
     # 处理主要视频片段
     for clip_config in resources['main']:
+        # 判断是否为跳过片段
+        if clip_config.get("skip",False):
+            continue
         # 判断是否是最后一个片段
         if clip_config['id'] == resources['main'][-1]['id'] and full_last_clip:
             start_time = clip_config['start']
@@ -529,6 +532,8 @@ def render_all_video_clips(resources, video_output_path, resolution, v_bitrate_k
             vfile_prefix += 1
 
     for clip_config in resources['main']:
+        if clip_config.get("skip",False):
+            continue
         clip = create_video_segment(clip_config, resolution, font_path)
         clip = modify_and_rend_clip(clip, clip_config, vfile_prefix, auto_add_transition, trans_time)
 
